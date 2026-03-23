@@ -1,0 +1,116 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>icu.azim</groupId>
+	<artifactId>HytaleMoonbaseTTS</artifactId>
+	<version>${revision}</version>
+
+	<properties>
+		<revision>0.0.1</revision>
+		<maven.compiler.source>21</maven.compiler.source>
+		<maven.compiler.target>21</maven.compiler.target>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+	</properties>
+
+	<repositories>
+		<!-- Hytale release repository -->
+		<repository>
+			<id>hytale-release</id>
+			<url>https://maven.hytale.com/release</url>
+		</repository>
+		<!-- Hytale pre-release repository -->
+		<repository>
+			<id>hytale-pre-release</id>
+			<url>https://maven.hytale.com/pre-release</url>
+		</repository>
+
+		<repository>
+			<id>hytalemodding-snapshots</id>
+			<name>HytaleModding</name>
+			<url>https://maven.hytalemodding.dev/snapshots</url>
+		</repository>
+		<repository>
+			<id>henkelmax.public</id>
+			<url>https://maven.maxhenkel.de/repository/public</url>
+		</repository>
+	</repositories>
+
+	<dependencies>
+		<dependency>
+			<groupId>com.hypixel.hytale</groupId>
+			<artifactId>Server</artifactId>
+			<!-- Replace with latest version -->
+			<version>2026.03.23-338988e70</version>
+			<scope>provided</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>com.alessiodp.libby</groupId>
+			<artifactId>libby-hytale</artifactId>
+			<version>2.0.2-SNAPSHOT</version>
+		</dependency>
+		
+		
+		<dependency>
+			<groupId>dev.bytesizedfox.dectalk</groupId>
+			<artifactId>dectalk</artifactId>
+			<version>1.0.0</version>
+		</dependency>
+		
+		<dependency>
+			<groupId>de.maxhenkel.opus4j</groupId>
+			<artifactId>opus4j</artifactId>
+			<version>2.1.0</version>
+			<scope>provided</scope>
+		</dependency>
+
+	</dependencies>
+
+	<build>
+		<sourceDirectory>src</sourceDirectory>
+		<resources>
+			<resource>
+				<targetPath>.</targetPath>
+				<filtering>true</filtering>
+				<includes>
+					<include>manifest.json</include>
+				</includes>
+				<directory>${basedir}</directory>
+			</resource>
+		</resources>
+		<plugins>
+			<plugin>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.13.0</version>
+				<configuration>
+					<release>21</release>
+				</configuration>
+			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-shade-plugin</artifactId>
+				<version>3.6.1</version>
+				<executions>
+					<execution>
+						<id>shade</id>
+						<phase>package</phase>
+						<goals>
+							<goal>shade</goal>
+						</goals>
+						<configuration>
+							<relocations>
+								<relocation>
+									<pattern>com.alessiodp.libby</pattern>
+									<shadedPattern>
+										icu.azim.libs.com.alessiodp.libby</shadedPattern>
+								</relocation>
+							</relocations>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+</project>

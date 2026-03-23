@@ -1,0 +1,19 @@
+{
+  "Group": "icu.azim",
+  "Name": "MoonbaseTTS",
+  "Version": "${revision}",
+  "Description": "Adds DECtalk tts",
+  "Authors": [
+    {
+      "Name": "Azim",
+      "Url": "https://azim.icu"
+    }
+  ],
+  "Website": "https://azim.icu",
+  "ServerVersion": "*",
+  "Dependencies": {},
+  "OptionalDependencies": {},
+  "DisabledByDefault": false,
+  "IncludesAssetPack": false,
+  "Main": "icu.azim.tts.TTSPlugin"
+}
