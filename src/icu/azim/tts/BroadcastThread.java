@@ -5,16 +5,13 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.hypixel.hytale.component.Store;
 import com.hypixel.hytale.logger.HytaleLogger;
 import com.hypixel.hytale.protocol.Position;
 import com.hypixel.hytale.protocol.packets.stream.StreamType;
 import com.hypixel.hytale.protocol.packets.voice.RelayedVoiceData;
-import com.hypixel.hytale.server.core.modules.entity.component.TransformComponent;
 import com.hypixel.hytale.server.core.modules.voice.VoiceModule;
 import com.hypixel.hytale.server.core.modules.voice.VoiceModule.PositionSnapshot;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
-import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 
 
 
@@ -44,8 +41,7 @@ public class BroadcastThread implements Runnable {
             
             for(PlayerRef receiver : data.receivers) {
                 HytaleLogger.get("tts").atInfo().log("got into inner loop");
-                Store<EntityStore> store = receiver.getReference().getStore();
-                
+
                 var voiceChannel = receiver.getPacketHandler().getChannel(StreamType.Voice);
                 HytaleLogger.get("tts").atInfo().log("got channel");
                 if (voiceChannel == null || !voiceChannel.isActive()) {
