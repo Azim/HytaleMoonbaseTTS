@@ -93,11 +93,11 @@ public class TTSThread implements Runnable {
     
     private static List<byte[]> generateOpusFrames(short[] samples) throws IOException, UnknownPlatformException{
         
-        //upsample 11025 -> 12000
-        int outputLength = (int) Math.round(samples.length * (double) 12000 / 11025);
+        //upsample 11025 -> 48000
+        int outputLength = (int) Math.round(samples.length * (double) 48000 / 11025);
         short[] output = new short[outputLength];
 
-        double step = (double) 11025 / 12000;
+        double step = (double) 11025 / 48000;
 
         for (int i = 0; i < output.length; i++) {
             double srcPos = i * step;
@@ -116,8 +116,9 @@ public class TTSThread implements Runnable {
         
         //split into 20ms frames and encode with opus
         List<byte[]> frames = new ArrayList<byte[]>();
-        try (OpusEncoder encoder = new OpusEncoder(12000, 1, OpusEncoder.Application.VOIP)) {
-            int frameSize = 240; //20ms at 12kHz 
+        try (OpusEncoder encoder = new OpusEncoder(48000, 1, OpusEncoder.Application.VOIP)) {
+            int frameSize = 960; //20ms at 48kHz 
+            encoder.resetState(); // only reset once
 
             for (int i = 0; i < output.length; i += frameSize) {
                 int len = Math.min(frameSize, output.length - i);
@@ -129,10 +130,7 @@ public class TTSThread implements Runnable {
                 encoder.setMaxPayloadSize(1500);
                 byte[] result = encoder.encode(frame);
                 frames.add(result);
-                encoder.resetState();
             }
-            
-            encoder.close();
         }
         
         
