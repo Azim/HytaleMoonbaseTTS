@@ -18,9 +18,7 @@ import com.hypixel.hytale.server.core.universe.PlayerRef;
 public class BroadcastThread implements Runnable {
 
     public record BroadcastData(List<byte[]> audioData, Collection<PlayerRef> receivers) {}
-
-
-
+    
     private ConcurrentHashMap<UUID, BroadcastData> toBroadcast = new ConcurrentHashMap<>();
     
     private static short sequenceNumber = 0;
@@ -37,22 +35,17 @@ public class BroadcastThread implements Runnable {
                 value.audioData.remove(0);
                 return value;
             });
-            HytaleLogger.get("tts").atInfo().log("got into toBroadcast loop, frames left "+data.audioData.size());
             
             for(PlayerRef receiver : data.receivers) {
-                HytaleLogger.get("tts").atInfo().log("got into inner loop");
 
                 var voiceChannel = receiver.getPacketHandler().getChannel(StreamType.Voice);
-                HytaleLogger.get("tts").atInfo().log("got channel");
                 if (voiceChannel == null || !voiceChannel.isActive()) {
-                    HytaleLogger.get("tts").atInfo().log("no active voice channel, return");
+                    HytaleLogger.get("TTS broadcast").atInfo().log("no active voice channel for "+receiver.getUsername()+"|"+receiver.getUuid());
                     return;
                 }
                 
                 PositionSnapshot cachedposition = VoiceModule.get().getCachedPosition(receiver.getUuid());
                 Position position = new Position(cachedposition.x(), cachedposition.y(), cachedposition.z());
-
-                HytaleLogger.get("tts").atInfo().log("got cached pos");
                  
                 RelayedVoiceData relay = new RelayedVoiceData();
                 relay.entityId = 0;
@@ -63,11 +56,8 @@ public class BroadcastThread implements Runnable {
                 relay.opusData = currentFrameData;
                 relay.speakerId = sender;
                 voiceChannel.writeAndFlush(relay);
-                HytaleLogger.get("tts").atInfo().log("sent packet");
                 
             }
-
-            
         }
         
         toBroadcast.entrySet().removeIf(entry -> entry.getValue().audioData.isEmpty());

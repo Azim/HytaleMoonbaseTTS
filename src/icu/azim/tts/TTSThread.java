@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import com.hypixel.hytale.logger.HytaleLogger;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 
 import de.maxhenkel.opus4j.OpusEncoder;
@@ -27,12 +28,10 @@ public class TTSThread implements Runnable {
     
     public void speak(UUID sender, String text, Collection<PlayerRef> receivers) {
         if (!TTSNative.isLoaded()) {
-            System.out.println("speak - native not loaded!!!");
+            HytaleLogger.get("TTS processing").atInfo().log("TTSNative is not loaded! see server start logs to find out why!");
             return;
         }
-        System.out.println("speak before offer");
         messageQueue.offer(new SpeechData(sender, text, receivers));
-        System.out.println("speak after offer");
     }
 
     private void ensureInitialized() {
@@ -45,7 +44,7 @@ public class TTSThread implements Runnable {
     @Override
     public void run() {
         if (!TTSNative.isLoaded()) {
-            System.out.println("TTSThread run - native not loaded!!!");
+            HytaleLogger.get("TTS processing").atInfo().log("TTSNative is not loaded! see server start logs to find out why!");
             return;
         }
         ensureInitialized();
@@ -55,44 +54,32 @@ public class TTSThread implements Runnable {
             return;
         }
         
-        System.out.println("TTSThread before reset");
-
         TTSNative.reset();
-        System.out.println("TTSThread after reset");
-        TTSNative.speak("[:rate 180]" + message.text);
-        System.out.println("TTSThread after speak");
+        TTSNative.speak("[:rate 180]" + message.text); //FIXME append reset commands after the text. move pre- and post- commands to plugin config 
         TTSNative.sync();
         
-        System.out.println("TTSThread after sync");
-
         int totalSamples = TTSNative.getAvailableSamples();
-
         if (totalSamples == 0) {
-            System.out.println("got 0 totalSamples");
             return;
         }
 
         short[] audioData = new short[totalSamples];
         int copied = TTSNative.readSamples(audioData, totalSamples);
 
-        System.out.println("copied "+copied+" samples");
         if(copied < 10) return;
         
         List<byte[]> frames;
         try {
-            System.out.println("before generate opus");
             frames = generateOpusFrames(audioData);
-            System.out.println("after generate opus");
             broadcaster.broadcastSpeech(message.sender, frames, message.receivers);
-            System.out.println("after broadcastSpeech");
         } catch (IOException | UnknownPlatformException e) {
             e.printStackTrace();
+            HytaleLogger.get("TTS processing").atSevere().withCause(e).log("Error encoding speech to opus frames");
         }
     }
     
     
     private static List<byte[]> generateOpusFrames(short[] samples) throws IOException, UnknownPlatformException{
-        
         //upsample 11025 -> 48000
         int outputLength = (int) Math.round(samples.length * (double) 48000 / 11025);
         short[] output = new short[outputLength];
@@ -119,20 +106,17 @@ public class TTSThread implements Runnable {
         try (OpusEncoder encoder = new OpusEncoder(48000, 1, OpusEncoder.Application.VOIP)) {
             int frameSize = 960; //20ms at 48kHz 
             encoder.resetState(); // only reset once
+            encoder.setMaxPayloadSize(1500);
 
             for (int i = 0; i < output.length; i += frameSize) {
                 int len = Math.min(frameSize, output.length - i);
 
-                //short[] frame = Arrays.copyOfRange(output, i, i+len);
                 short[] frame = new short[frameSize];
                 System.arraycopy(output, i, frame, 0, len);
-
-                encoder.setMaxPayloadSize(1500);
                 byte[] result = encoder.encode(frame);
                 frames.add(result);
             }
         }
-        
         
         return frames;
     }

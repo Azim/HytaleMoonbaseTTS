@@ -33,7 +33,7 @@ public class TTSPlugin extends JavaPlugin {
             .version("2.1.0")
             .resolveTransitiveDependencies(true)
             .build();
-
+        //TODO libdtc from maven instead of shaded, waiting on Neil to investigate why publishing doesnt work
         libraryManager.addMavenCentral();
         libraryManager.addHytaleModding();
         libraryManager.addRepository("https://maven.maxhenkel.de/repository/public");
@@ -42,30 +42,35 @@ public class TTSPlugin extends JavaPlugin {
     
     @Override
     protected void setup() {
-        this.getCommandRegistry().registerCommand(new BeepCommand("beep", "Should beep"));
-        
-        senderThread = new BroadcastThread();
+        senderThread = new BroadcastThread(); 
         senderFuture = SENDER_SCHEDULER.scheduleAtFixedRate(senderThread, 0, 20, TimeUnit.MILLISECONDS); //every 20 ms
 
         ttsThread = new TTSThread(senderThread);
         ttsFuture = TTS_SCHEDULER.scheduleWithFixedDelay(ttsThread, 0, 200, TimeUnit.MILLISECONDS); //5 times per second
         
-
-        this.getEventRegistry().registerGlobal(PlayerChatEvent.class, event -> {
-            this.getLogger().atInfo().log("before speak");
+        //FIXME need ttsThread reference in the message handler but i dont want to make it static so i will do that instead for now 
+        this.getEventRegistry().registerGlobal(PlayerChatEvent.class, event -> { 
             ttsThread.speak(event.getSender().getUuid(), event.getContent(), event.getTargets());
-            this.getLogger().atInfo().log("after speak");
         });
     }
     
     @Override
     protected void shutdown() {
         super.shutdown();
-        if(ttsFuture != null) ttsFuture.cancel(false);
+        if(ttsFuture != null) ttsFuture.cancel(false); 
         if(senderFuture != null) senderFuture.cancel(true);
-        
-        
     }
     
+    public static short[] generateBeepFrame(double freqHz, double amplitude) { //i will keep it around for now, maybe will reuse for something later
+        int frameSize = 960; // 20 ms @ 48 kHz
+        short[] samples = new short[frameSize];
+        double twoPiF = 2.0 * Math.PI * freqHz;
+        for (int i = 0; i < frameSize; i++) {
+            double t = i / (double) 48000;
+            double s = Math.sin(twoPiF * t);
+            samples[i] = (short) Math.round(s * amplitude * Short.MAX_VALUE);
+        }
+        return samples;
+    }
 
 }
