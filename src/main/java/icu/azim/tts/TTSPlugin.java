@@ -5,17 +5,20 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
-import com.alessiodp.libby.HytaleLibraryManager;
-import com.alessiodp.libby.Library;
+import com.hypixel.hytale.component.Ref;
+import com.hypixel.hytale.component.Store;
 import com.hypixel.hytale.server.core.event.events.player.PlayerChatEvent;
+import com.hypixel.hytale.server.core.modules.entity.tracker.NetworkId;
 import com.hypixel.hytale.server.core.plugin.JavaPlugin;
 import com.hypixel.hytale.server.core.plugin.JavaPluginInit;
+import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 
-
-
+import icu.azim.tts.util.DependencyLoader;
 
 public class TTSPlugin extends JavaPlugin {
-
+    public static final int BITRATE = 48000;
+    public static final int FRAME_SIZE = 960;
+    
     private static final ScheduledExecutorService SENDER_SCHEDULER = Executors.newSingleThreadScheduledExecutor();
     private static final ScheduledExecutorService TTS_SCHEDULER = Executors.newSingleThreadScheduledExecutor();
     private ScheduledFuture<?> senderFuture = null; 
@@ -25,19 +28,7 @@ public class TTSPlugin extends JavaPlugin {
     
     public TTSPlugin(JavaPluginInit init) {
         super(init);
-        HytaleLibraryManager libraryManager = new HytaleLibraryManager(this);
-
-        Library opusLib = Library.builder()
-            .groupId("de{}maxhenkel{}opus4j") // "{}" is replaced with ".", useful to avoid unwanted changes made by maven-shade-plugin
-            .artifactId("opus4j")
-            .version("2.1.0")
-            .resolveTransitiveDependencies(true)
-            .build();
-        //TODO libdtc from maven instead of shaded, waiting on Neil to investigate why publishing doesnt work
-        libraryManager.addMavenCentral();
-        libraryManager.addHytaleModding();
-        libraryManager.addRepository("https://maven.maxhenkel.de/repository/public");
-        libraryManager.loadLibrary(opusLib);
+        DependencyLoader.load(this);
     }
     
     @Override
@@ -50,8 +41,15 @@ public class TTSPlugin extends JavaPlugin {
         
         //FIXME need ttsThread reference in the message handler but i dont want to make it static so i will do that instead for now 
         this.getEventRegistry().registerGlobal(PlayerChatEvent.class, event -> { 
-            ttsThread.speak(event.getSender().getUuid(), event.getContent(), event.getTargets());
+            Ref<EntityStore> ref = event.getSender().getReference();
+            Store<EntityStore> store = ref.getStore();
+            store.getExternalData().getWorld().execute(()->{
+                NetworkId networkIdComponent = store.getComponent(ref, NetworkId.getComponentType());
+                ttsThread.speak(event.getSender().getUuid(), networkIdComponent.getId(), event.getContent(), event.getTargets());
+            });
+            
         });
+        
     }
     
     @Override

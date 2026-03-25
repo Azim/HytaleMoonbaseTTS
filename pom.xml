@@ -26,9 +26,9 @@
 		</repository>
 
 		<repository>
-			<id>hytalemodding-snapshots</id>
+			<id>hytalemodding-releases</id>
 			<name>HytaleModding</name>
-			<url>https://maven.hytalemodding.dev/snapshots</url>
+			<url>https://maven.hytalemodding.dev/releases</url>
 		</repository>
 		<repository>
 			<id>henkelmax.public</id>
@@ -45,30 +45,113 @@
 			<scope>provided</scope>
 		</dependency>
 
-		<dependency>
-			<groupId>com.alessiodp.libby</groupId>
-			<artifactId>libby-hytale</artifactId>
-			<version>2.0.2-SNAPSHOT</version>
-		</dependency>
-		
-		
-		<dependency>
-			<groupId>dev.bytesizedfox.dectalk</groupId>
-			<artifactId>dectalk</artifactId>
-			<version>1.0.0</version>
-		</dependency>
-		
-		<dependency>
-			<groupId>de.maxhenkel.opus4j</groupId>
-			<artifactId>opus4j</artifactId>
-			<version>2.1.0</version>
-			<scope>provided</scope>
-		</dependency>
-
 	</dependencies>
 
+	<profiles>
+		<profile>
+			<id>with-libby</id>
+			<activation>
+				<activeByDefault>true</activeByDefault>
+			</activation>
+			<dependencies>
+				<dependency>
+					<groupId>com.alessiodp.libby</groupId>
+					<artifactId>libby-hytale</artifactId>
+					<version>2.0.2-SNAPSHOT</version>
+				</dependency>
+				<dependency>
+					<groupId>dev.bytesizedfox.dectalk</groupId>
+					<artifactId>libdtc</artifactId>
+					<version>1.0.0</version>
+					<scope>provided</scope>
+				</dependency>
+				<dependency>
+					<groupId>de.maxhenkel.opus4j</groupId>
+					<artifactId>opus4j</artifactId>
+					<version>2.1.0</version>
+					<scope>provided</scope>
+				</dependency>
+			</dependencies>
+
+			<build>
+				<directory>${project.basedir}/target/with-libby</directory>
+
+				<plugins>
+					<plugin>
+						<groupId>org.codehaus.mojo</groupId>
+						<artifactId>build-helper-maven-plugin</artifactId>
+						<version>3.6.1</version>
+						<executions>
+							<execution>
+								<id>add-libby-sources</id>
+								<phase>generate-sources</phase>
+								<goals>
+									<goal>add-source</goal>
+								</goals>
+								<configuration>
+									<sources>
+										<source>src/libby/java</source>
+									</sources>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+
+
+		</profile>
+
+
+		<profile>
+			<id>fatjar</id>
+			<activation>
+				<activeByDefault>false</activeByDefault>
+			</activation>
+			<dependencies>
+				<dependency>
+					<groupId>dev.bytesizedfox.dectalk</groupId>
+					<artifactId>libdtc</artifactId>
+					<version>1.0.0</version>
+				</dependency>
+				<dependency>
+					<groupId>de.maxhenkel.opus4j</groupId>
+					<artifactId>opus4j</artifactId>
+					<version>2.1.0</version>
+				</dependency>
+			</dependencies>
+
+			<build>
+				<directory>${project.basedir}/target/fatjar</directory>
+				<plugins>
+					<plugin>
+						<groupId>org.codehaus.mojo</groupId>
+						<artifactId>build-helper-maven-plugin</artifactId>
+						<version>3.6.1</version>
+						<executions>
+							<execution>
+								<id>add-dummy-sources</id>
+								<phase>generate-sources</phase>
+								<goals>
+									<goal>add-source</goal>
+								</goals>
+								<configuration>
+									<sources>
+										<source>src/dummy/java</source>
+									</sources>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+
+	</profiles>
+
+
 	<build>
-		<sourceDirectory>src</sourceDirectory>
+		<sourceDirectory>src/main/java</sourceDirectory>
 		<resources>
 			<resource>
 				<targetPath>.</targetPath>
@@ -80,6 +163,7 @@
 			</resource>
 		</resources>
 		<plugins>
+
 			<plugin>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.13.0</version>
@@ -87,7 +171,6 @@
 					<release>21</release>
 				</configuration>
 			</plugin>
-
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-shade-plugin</artifactId>

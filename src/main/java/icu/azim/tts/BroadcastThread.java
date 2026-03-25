@@ -1,5 +1,6 @@
 package icu.azim.tts;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
@@ -17,7 +18,17 @@ import com.hypixel.hytale.server.core.universe.PlayerRef;
 
 public class BroadcastThread implements Runnable {
 
-    public record BroadcastData(List<byte[]> audioData, Collection<PlayerRef> receivers) {}
+    public record BroadcastData(int entityId, List<byte[]> audioData, int timestamp, Collection<PlayerRef> receivers) {
+        BroadcastData advance() {
+            if (audioData.isEmpty()) {
+                //should never be called - we clean up all entries which have empty audio data
+                return this;
+            }
+            List<byte[]> copy = new ArrayList<>(audioData);
+            copy.removeFirst();
+            return new BroadcastData(entityId, copy, timestamp + TTSPlugin.FRAME_SIZE, receivers);
+        }
+    }
     
     private ConcurrentHashMap<UUID, BroadcastData> toBroadcast = new ConcurrentHashMap<>();
     
@@ -31,10 +42,6 @@ public class BroadcastThread implements Runnable {
         for(UUID sender : toBroadcast.keySet()) {
             BroadcastData data = toBroadcast.get(sender);
             byte[] currentFrameData = data.audioData.get(0);
-            toBroadcast.compute(sender, (key, value) -> {
-                value.audioData.remove(0);
-                return value;
-            });
             
             for(PlayerRef receiver : data.receivers) {
 
@@ -46,18 +53,25 @@ public class BroadcastThread implements Runnable {
                 
                 PositionSnapshot cachedposition = VoiceModule.get().getCachedPosition(receiver.getUuid());
                 Position position = new Position(cachedposition.x(), cachedposition.y(), cachedposition.z());
-                 
+                
+                
                 RelayedVoiceData relay = new RelayedVoiceData();
-                relay.entityId = 0;
+                relay.entityId = data.entityId;
                 relay.sequenceNumber = sequenceNumber++;
-                relay.timestamp = (int) System.currentTimeMillis();
+                relay.timestamp = data.timestamp;
                 relay.speakerIsUnderwater = false;
-                relay.speakerPosition = position;
+                //TODO replace with "unset" after the patch is out defaulting "no position" to "listener position"
+                //TODO add many convenience methods for different TTS settings
+                relay.speakerPosition = position; 
                 relay.opusData = currentFrameData;
                 relay.speakerId = sender;
                 voiceChannel.writeAndFlush(relay);
                 
             }
+            
+            toBroadcast.compute(sender, (key, value) -> {
+                return value.advance();
+            });
         }
         
         toBroadcast.entrySet().removeIf(entry -> entry.getValue().audioData.isEmpty());
@@ -65,9 +79,9 @@ public class BroadcastThread implements Runnable {
     }
     
 
-    public void broadcastSpeech(UUID sender, List<byte[]> audioData, Collection<PlayerRef> receivers) {
+    public void broadcastSpeech(UUID sender, int entityId, List<byte[]> audioData, Collection<PlayerRef> receivers) {
         if(audioData.isEmpty() || receivers.isEmpty()) return;
-        BroadcastData newData = new BroadcastData(audioData, receivers);
+        BroadcastData newData = new BroadcastData(entityId, audioData, 0, receivers);
         toBroadcast.merge(sender, newData, (v1, v2) -> { //append if user is sending many messages
             v1.audioData.addAll(v2.audioData);
             return v1;

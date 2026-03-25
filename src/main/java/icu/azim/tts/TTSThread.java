@@ -16,7 +16,7 @@ import dev.bytesizedfox.dectalk.TTSNative;
 
 public class TTSThread implements Runnable {
 
-    public record SpeechData(UUID sender, String text, Collection<PlayerRef> receivers) {}
+    public record SpeechData(UUID sender, int entityId, String text, Collection<PlayerRef> receivers) {}
     
     private final ConcurrentLinkedQueue<SpeechData> messageQueue = new ConcurrentLinkedQueue<>();
     private boolean initialized;
@@ -26,12 +26,12 @@ public class TTSThread implements Runnable {
         this.broadcaster = broadcaster;
     }
     
-    public void speak(UUID sender, String text, Collection<PlayerRef> receivers) {
+    public void speak(UUID sender, int entityId, String text, Collection<PlayerRef> receivers) {
         if (!TTSNative.isLoaded()) {
             HytaleLogger.get("TTS processing").atInfo().log("TTSNative is not loaded! see server start logs to find out why!");
             return;
         }
-        messageQueue.offer(new SpeechData(sender, text, receivers));
+        messageQueue.offer(new SpeechData(sender, entityId, text, receivers));
     }
 
     private void ensureInitialized() {
@@ -71,7 +71,7 @@ public class TTSThread implements Runnable {
         List<byte[]> frames;
         try {
             frames = generateOpusFrames(audioData);
-            broadcaster.broadcastSpeech(message.sender, frames, message.receivers);
+            broadcaster.broadcastSpeech(message.sender, message.entityId, frames, message.receivers);
         } catch (IOException | UnknownPlatformException e) {
             e.printStackTrace();
             HytaleLogger.get("TTS processing").atSevere().withCause(e).log("Error encoding speech to opus frames");
@@ -81,10 +81,10 @@ public class TTSThread implements Runnable {
     
     private static List<byte[]> generateOpusFrames(short[] samples) throws IOException, UnknownPlatformException{
         //upsample 11025 -> 48000
-        int outputLength = (int) Math.round(samples.length * (double) 48000 / 11025);
+        int outputLength = (int) Math.round(samples.length * (double) TTSPlugin.BITRATE / 11025);
         short[] output = new short[outputLength];
 
-        double step = (double) 11025 / 48000;
+        double step = (double) 11025 / TTSPlugin.BITRATE;
 
         for (int i = 0; i < output.length; i++) {
             double srcPos = i * step;
@@ -103,8 +103,8 @@ public class TTSThread implements Runnable {
         
         //split into 20ms frames and encode with opus
         List<byte[]> frames = new ArrayList<byte[]>();
-        try (OpusEncoder encoder = new OpusEncoder(48000, 1, OpusEncoder.Application.VOIP)) {
-            int frameSize = 960; //20ms at 48kHz 
+        try (OpusEncoder encoder = new OpusEncoder(TTSPlugin.BITRATE, 1, OpusEncoder.Application.VOIP)) {
+            int frameSize = TTSPlugin.FRAME_SIZE; //20ms at 48kHz 
             encoder.resetState(); // only reset once
             encoder.setMaxPayloadSize(1500);
 
