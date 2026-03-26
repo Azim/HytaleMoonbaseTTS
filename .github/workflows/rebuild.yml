@@ -20,7 +20,7 @@ jobs:
         run: echo "VERSION=0.1.1" >> $GITHUB_ENV
       - name: Get latest hytale version for ${{ matrix.hytale-tag }}
         run: |
-          HYTALE_VERSION=$(curl -s https://maven.hytale.com/${{ matrix.hytale-tag }}/com/hypixel/hytale/Server/maven-metadata.xml | xmllint --xpath "string(//metadata/versioning/latest)" -)
+          HYTALE_VERSION=$(curl -fsSL https://maven.hytale.com/${{ matrix.hytale-tag }}/com/hypixel/hytale/Server/maven-metadata.xml | xmllint --xpath "string(//metadata/versioning/latest)" -)
           echo "Latest version: $HYTALE_VERSION"
           echo "HYTALE_VERSION=$HYTALE_VERSION" >> $GITHUB_ENV
       - name: Set up Java 25
@@ -38,13 +38,12 @@ jobs:
           path: ./target/${{ matrix.profile }}/HytaleMoonbaseTTS-*.jar
           if-no-files-found: error
       - name: Upload to modtale
-        env:
-          UPLOAD_VERSION: ${{ case(
-            matrix.profile == 'with-libby',
-            format('{0}-{1}', env.VERSION, env.LATEST_COMMIT_HASH),
-            format('{0}-{1}+fatjar', env.VERSION, env.LATEST_COMMIT_HASH)
-          ) }}
         run: |
+          if [ "${{ matrix.profile }}" = "with-libby" ]; then
+            UPLOAD_VERSION="${VERSION}-${LATEST_COMMIT_HASH}"
+          else
+            UPLOAD_VERSION="${VERSION}-${LATEST_COMMIT_HASH}+fatjar"
+          fi
           JAR_PATH=$(find target/${{ matrix.profile }} -type f -name 'HytaleMoonbaseTTS-*.jar' | head -n 1)
           
           echo "Found Jar: $JAR_PATH"
@@ -57,3 +56,4 @@ jobs:
             -F "gameVersions=$HYTALE_VERSION" \
             -F "channel=BETA" \
             -F "changelog=Automated Build & Release from GitHub"
+            
