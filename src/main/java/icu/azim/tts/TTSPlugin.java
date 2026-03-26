@@ -12,12 +12,15 @@ import com.hypixel.hytale.server.core.modules.entity.tracker.NetworkId;
 import com.hypixel.hytale.server.core.plugin.JavaPlugin;
 import com.hypixel.hytale.server.core.plugin.JavaPluginInit;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
+import com.hypixel.hytale.server.core.util.Config;
 
 import icu.azim.tts.util.DependencyLoader;
 
 public class TTSPlugin extends JavaPlugin {
     public static final int BITRATE = 48000;
     public static final int FRAME_SIZE = 960;
+
+    private final Config<TTSConfig> config = this.withConfig("HytaleMoonbaseTTSConfig", TTSConfig.CODEC);
     
     private static final ScheduledExecutorService SENDER_SCHEDULER = Executors.newSingleThreadScheduledExecutor();
     private static final ScheduledExecutorService TTS_SCHEDULER = Executors.newSingleThreadScheduledExecutor();
@@ -28,15 +31,16 @@ public class TTSPlugin extends JavaPlugin {
     
     public TTSPlugin(JavaPluginInit init) {
         super(init);
+        config.save();
         DependencyLoader.load(this);
     }
     
     @Override
     protected void setup() {
-        senderThread = new BroadcastThread(); 
+        senderThread = new BroadcastThread(config.get().isPositionalAudioEnabled()); 
         senderFuture = SENDER_SCHEDULER.scheduleAtFixedRate(senderThread, 0, 20, TimeUnit.MILLISECONDS); //every 20 ms
 
-        ttsThread = new TTSThread();
+        ttsThread = new TTSThread(config.get().getCommandPrefix(), config.get().getCommandSuffix());
         ttsFuture = TTS_SCHEDULER.scheduleWithFixedDelay(ttsThread, 0, 200, TimeUnit.MILLISECONDS); //5 times per second
         
         //FIXME need ttsThread reference in the message handler but i dont want to make it static so i will do that instead for now 

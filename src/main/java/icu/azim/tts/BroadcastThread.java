@@ -18,6 +18,12 @@ import com.hypixel.hytale.server.core.universe.PlayerRef;
 
 public class BroadcastThread implements Runnable {
 
+    private boolean positionalAudioEnabled = true;
+    
+    public BroadcastThread(boolean positionalAudioEnabled) {
+        this.positionalAudioEnabled = positionalAudioEnabled;
+    }
+    
     public record BroadcastData(int entityId, List<byte[]> audioData, int timestamp, Collection<PlayerRef> receivers) {
         BroadcastData advance() {
             if (audioData.isEmpty()) {
@@ -50,8 +56,8 @@ public class BroadcastThread implements Runnable {
                     HytaleLogger.get("TTS broadcast").atInfo().log("no active voice channel for "+receiver.getUsername()+"|"+receiver.getUuid());
                     return;
                 }
-                
-                PositionSnapshot cachedposition = VoiceModule.get().getCachedPosition(sender); //FIXME configuration on if to use positional audio or not
+                //FIXME waiting for a fix when we could replace receiver's coordinates with null for more smooth positionless audio
+                PositionSnapshot cachedposition = VoiceModule.get().getCachedPosition(positionalAudioEnabled ? sender : receiver.getUuid());
                 Position position = new Position(cachedposition.x(), cachedposition.y(), cachedposition.z());
                 
                 
@@ -59,9 +65,7 @@ public class BroadcastThread implements Runnable {
                 relay.entityId = data.entityId;
                 relay.sequenceNumber = sequenceNumber++;
                 relay.timestamp = data.timestamp;
-                relay.speakerIsUnderwater = VoiceModule.get().getCachedPosition(sender).isUnderwater();
-                //TODO replace with "unset" after the patch is out defaulting "no position" to "listener position"
-                //TODO add many convenience methods for different TTS settings
+                relay.speakerIsUnderwater = positionalAudioEnabled ? VoiceModule.get().getCachedPosition(sender).isUnderwater() : false;
                 relay.speakerPosition = position; 
                 relay.opusData = currentFrameData;
                 relay.speakerId = sender;
