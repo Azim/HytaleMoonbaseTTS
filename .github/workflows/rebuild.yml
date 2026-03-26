@@ -11,21 +11,25 @@ jobs:
         uses: actions/checkout@v6
       - name: Get latest commit hash
         run: echo "LATEST_COMMIT_HASH=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-      - name: Set up Java 21
+      - name: Set up Java 25
         uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
-          java-version: '21'
+          java-version: '25'
           cache: maven
       - name: Build fatjar
         run: mvn clean package -P fatjar -Drevision=$LATEST_COMMIT_HASH
       - name: Build with libby
         run: mvn clean package -P with-libby -Drevision=$LATEST_COMMIT_HASH
-      - uses: actions/upload-artifact@v6
-        with:
-          name: HytaleMoonbaseTTS-libby
-          path: ./target/with-libby/HytaleMoonbaseTTS-*.jar
-      - uses: actions/upload-artifact@v6
+      - name: Upload fatjar artifact
+        uses: actions/upload-artifact@v6
         with:
           name: HytaleMoonbaseTTS-fatjar
           path: ./target/fatjar/HytaleMoonbaseTTS-*.jar
+          if-no-files-found: error
+      - name: Upload libby artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: HytaleMoonbaseTTS-libby
+          path: ./target/with-libby/HytaleMoonbaseTTS-*.jar
+          if-no-files-found: error
