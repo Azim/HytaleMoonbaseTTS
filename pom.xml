@@ -32,6 +32,11 @@
 			<url>https://maven.hytalemodding.dev/releases</url>
 		</repository>
 		<repository>
+			<id>hytalemodding-snapshots</id>
+			<name>HytaleModding</name>
+			<url>https://maven.hytalemodding.dev/snapshots</url>
+		</repository>
+		<repository>
 			<id>henkelmax.public</id>
 			<url>https://maven.maxhenkel.de/repository/public</url>
 		</repository>
