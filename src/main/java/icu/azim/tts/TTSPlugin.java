@@ -36,7 +36,7 @@ public class TTSPlugin extends JavaPlugin {
         senderThread = new BroadcastThread(); 
         senderFuture = SENDER_SCHEDULER.scheduleAtFixedRate(senderThread, 0, 20, TimeUnit.MILLISECONDS); //every 20 ms
 
-        ttsThread = new TTSThread(senderThread);
+        ttsThread = new TTSThread();
         ttsFuture = TTS_SCHEDULER.scheduleWithFixedDelay(ttsThread, 0, 200, TimeUnit.MILLISECONDS); //5 times per second
         
         //FIXME need ttsThread reference in the message handler but i dont want to make it static so i will do that instead for now 
@@ -45,7 +45,12 @@ public class TTSPlugin extends JavaPlugin {
             Store<EntityStore> store = ref.getStore();
             store.getExternalData().getWorld().execute(()->{
                 NetworkId networkIdComponent = store.getComponent(ref, NetworkId.getComponentType());
-                ttsThread.speak(event.getSender().getUuid(), networkIdComponent.getId(), event.getContent(), event.getTargets());
+                ttsThread.speakAndEncode(event.getContent()).thenAccept(frames->{
+                    senderThread.broadcastSpeech(event.getSender().getUuid(), networkIdComponent.getId(), frames, event.getTargets());
+                }).exceptionally((ex)->{
+                    ex.printStackTrace();
+                    return null;
+                });
             });
             
         });

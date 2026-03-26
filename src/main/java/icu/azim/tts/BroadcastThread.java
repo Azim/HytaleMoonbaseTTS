@@ -51,7 +51,7 @@ public class BroadcastThread implements Runnable {
                     return;
                 }
                 
-                PositionSnapshot cachedposition = VoiceModule.get().getCachedPosition(receiver.getUuid());
+                PositionSnapshot cachedposition = VoiceModule.get().getCachedPosition(sender); //FIXME configuration on if to use positional audio or not
                 Position position = new Position(cachedposition.x(), cachedposition.y(), cachedposition.z());
                 
                 
@@ -59,7 +59,7 @@ public class BroadcastThread implements Runnable {
                 relay.entityId = data.entityId;
                 relay.sequenceNumber = sequenceNumber++;
                 relay.timestamp = data.timestamp;
-                relay.speakerIsUnderwater = false;
+                relay.speakerIsUnderwater = VoiceModule.get().getCachedPosition(sender).isUnderwater();
                 //TODO replace with "unset" after the patch is out defaulting "no position" to "listener position"
                 //TODO add many convenience methods for different TTS settings
                 relay.speakerPosition = position; 

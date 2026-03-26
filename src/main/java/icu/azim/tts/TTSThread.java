@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.hypixel.hytale.logger.HytaleLogger;
@@ -16,22 +17,27 @@ import dev.bytesizedfox.dectalk.TTSNative;
 
 public class TTSThread implements Runnable {
 
-    public record SpeechData(UUID sender, int entityId, String text, Collection<PlayerRef> receivers) {}
+    public record SpeechData(String text, CompletableFuture<List<byte[]>> future) {}
     
     private final ConcurrentLinkedQueue<SpeechData> messageQueue = new ConcurrentLinkedQueue<>();
     private boolean initialized;
-    private BroadcastThread broadcaster;
     
-    public TTSThread(BroadcastThread broadcaster) {
-        this.broadcaster = broadcaster;
-    }
+    public TTSThread() { }
     
-    public void speak(UUID sender, int entityId, String text, Collection<PlayerRef> receivers) {
+    public CompletableFuture<List<byte[]>> speakAndEncode(String text){
         if (!TTSNative.isLoaded()) {
             HytaleLogger.get("TTS processing").atInfo().log("TTSNative is not loaded! see server start logs to find out why!");
-            return;
+            return CompletableFuture.failedFuture(
+                new IllegalStateException("TTSNative is not loaded")
+            );
         }
-        messageQueue.offer(new SpeechData(sender, entityId, text, receivers));
+        if(text.isEmpty()) {
+            return CompletableFuture.completedFuture(new ArrayList<byte[]>()); //no input - no frames, no time wasted
+        }
+        
+        CompletableFuture<List<byte[]>> result = new CompletableFuture<>();
+        messageQueue.offer(new SpeechData(text, result));
+        return result;
     }
 
     private void ensureInitialized() {
@@ -51,6 +57,7 @@ public class TTSThread implements Runnable {
 
         SpeechData message = messageQueue.poll();
         if (message == null) {
+            //no messages in queue
             return;
         }
         
@@ -60,26 +67,26 @@ public class TTSThread implements Runnable {
         
         int totalSamples = TTSNative.getAvailableSamples();
         if (totalSamples == 0) {
+            message.future.complete(new ArrayList<byte[]>());
             return;
         }
 
         short[] audioData = new short[totalSamples];
         int copied = TTSNative.readSamples(audioData, totalSamples);
 
-        if(copied < 10) return;
-        
         List<byte[]> frames;
         try {
             frames = generateOpusFrames(audioData);
-            broadcaster.broadcastSpeech(message.sender, message.entityId, frames, message.receivers);
+            message.future.complete(frames);
         } catch (IOException | UnknownPlatformException e) {
             e.printStackTrace();
             HytaleLogger.get("TTS processing").atSevere().withCause(e).log("Error encoding speech to opus frames");
+            message.future.completeExceptionally(e);
         }
     }
     
     
-    private static List<byte[]> generateOpusFrames(short[] samples) throws IOException, UnknownPlatformException{
+    public static List<byte[]> generateOpusFrames(short[] samples) throws IOException, UnknownPlatformException{
         //upsample 11025 -> 48000
         int outputLength = (int) Math.round(samples.length * (double) TTSPlugin.BITRATE / 11025);
         short[] output = new short[outputLength];

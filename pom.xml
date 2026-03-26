@@ -2,29 +2,30 @@
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-	<groupId>icu.azim</groupId>
-	<artifactId>HytaleMoonbaseTTS</artifactId>
-	<version>${revision}</version>
 
 	<properties>
-		<revision>0.0.1</revision>
+		<revision>0.1.0</revision>
 		<maven.compiler.source>21</maven.compiler.source>
 		<maven.compiler.target>21</maven.compiler.target>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<hytale-version>2026.03.26-89796e57b</hytale-version>
+		<libdtc-version>1.0.0-626639d</libdtc-version>
+		<opus4j-version>2.1.0</opus4j-version>
 	</properties>
 
+	<groupId>icu.azim</groupId>
+	<artifactId>HytaleMoonbaseTTS</artifactId>
+	<version>${revision}</version>
+	
 	<repositories>
-		<!-- Hytale release repository -->
 		<repository>
 			<id>hytale-release</id>
 			<url>https://maven.hytale.com/release</url>
 		</repository>
-		<!-- Hytale pre-release repository -->
 		<repository>
 			<id>hytale-pre-release</id>
 			<url>https://maven.hytale.com/pre-release</url>
 		</repository>
-
 		<repository>
 			<id>hytalemodding-releases</id>
 			<name>HytaleModding</name>
@@ -40,11 +41,9 @@
 		<dependency>
 			<groupId>com.hypixel.hytale</groupId>
 			<artifactId>Server</artifactId>
-			<!-- Replace with latest version -->
-			<version>2026.03.23-338988e70</version>
+			<version>${hytale-version}</version>
 			<scope>provided</scope>
 		</dependency>
-
 	</dependencies>
 
 	<profiles>
@@ -62,20 +61,18 @@
 				<dependency>
 					<groupId>dev.bytesizedfox.dectalk</groupId>
 					<artifactId>libdtc</artifactId>
-					<version>1.0.0</version>
+					<version>${libdtc-version}</version>
 					<scope>provided</scope>
 				</dependency>
 				<dependency>
 					<groupId>de.maxhenkel.opus4j</groupId>
 					<artifactId>opus4j</artifactId>
-					<version>2.1.0</version>
+					<version>${opus4j-version}</version>
 					<scope>provided</scope>
 				</dependency>
 			</dependencies>
-
 			<build>
 				<directory>${project.basedir}/target/with-libby</directory>
-
 				<plugins>
 					<plugin>
 						<groupId>org.codehaus.mojo</groupId>
@@ -98,8 +95,6 @@
 					</plugin>
 				</plugins>
 			</build>
-
-
 		</profile>
 
 
@@ -112,15 +107,14 @@
 				<dependency>
 					<groupId>dev.bytesizedfox.dectalk</groupId>
 					<artifactId>libdtc</artifactId>
-					<version>1.0.0</version>
+					<version>${libdtc-version}</version>
 				</dependency>
 				<dependency>
 					<groupId>de.maxhenkel.opus4j</groupId>
 					<artifactId>opus4j</artifactId>
-					<version>2.1.0</version>
+					<version>${opus4j-version}</version>
 				</dependency>
 			</dependencies>
-
 			<build>
 				<directory>${project.basedir}/target/fatjar</directory>
 				<plugins>
@@ -146,7 +140,6 @@
 				</plugins>
 			</build>
 		</profile>
-
 	</profiles>
 
 
@@ -158,12 +151,12 @@
 				<filtering>true</filtering>
 				<includes>
 					<include>manifest.json</include>
+					<include>icon-256.png</include>
 				</includes>
 				<directory>${basedir}</directory>
 			</resource>
 		</resources>
 		<plugins>
-
 			<plugin>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.13.0</version>
@@ -186,8 +179,7 @@
 							<relocations>
 								<relocation>
 									<pattern>com.alessiodp.libby</pattern>
-									<shadedPattern>
-										icu.azim.libs.com.alessiodp.libby</shadedPattern>
+									<shadedPattern>icu.azim.libs.com.alessiodp.libby</shadedPattern>
 								</relocation>
 							</relocations>
 						</configuration>

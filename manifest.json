@@ -2,15 +2,15 @@
   "Group": "icu.azim",
   "Name": "MoonbaseTTS",
   "Version": "${revision}",
-  "Description": "Adds DECtalk tts",
+  "Description": "John Madden!\n\nAdds DECtalk tts",
   "Authors": [
     {
       "Name": "Azim",
       "Url": "https://azim.icu"
     }
   ],
-  "Website": "https://azim.icu",
-  "ServerVersion": "*",
+  "Website": "https://github.com/Azim/HytaleMoonbaseTTS/",
+  "ServerVersion": "${hytale-version}",
   "Dependencies": {},
   "OptionalDependencies": {},
   "DisabledByDefault": false,
