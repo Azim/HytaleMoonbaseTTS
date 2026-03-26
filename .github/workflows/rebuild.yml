@@ -5,6 +5,11 @@ on:
 
 jobs:
   build:
+    strategy:
+      fail-fast: true
+      matrix:
+        profile: [fatjar, with-libby]
+        hytale-tag: [release, pre-release]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -13,41 +18,42 @@ jobs:
         run: echo "LATEST_COMMIT_HASH=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
       - name: Get latest version
         run: echo "VERSION=0.1.1" >> $GITHUB_ENV
-      - name: Get latest hytale version
-        run: echo "HYTALE_VERSION=2026.03.26-89796e57b" >> $GITHUB_ENV
+      - name: Get latest hytale version for ${{ matrix.hytale-tag }}
+        run: |
+          HYTALE_VERSION=$(curl -s https://maven.hytale.com/${{ matrix.hytale-tag }}/com/hypixel/hytale/Server/maven-metadata.xml | xmllint --xpath "string(//metadata/versioning/latest)" -)
+          echo "Latest version: $HYTALE_VERSION"
+          echo "HYTALE_VERSION=$HYTALE_VERSION" >> $GITHUB_ENV
       - name: Set up Java 25
         uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '25'
           cache: maven
-      - name: Build fatjar
-        run: mvn clean package -P fatjar -Drevision=$VERSION-$LATEST_COMMIT_HASH -Dhytale-version=$HYTALE_VERSION
-      - name: Build with libby
-        run: mvn clean package -P with-libby -Drevision=$VERSION-$LATEST_COMMIT_HASH -Dhytale-version=$HYTALE_VERSION
-      - name: Upload fatjar artifact
+      - name: Build ${{ matrix.profile }} for ${{ matrix.hytale-tag }}
+        run: mvn clean package -P ${{ matrix.profile }} -Drevision=$VERSION-$LATEST_COMMIT_HASH -Dhytale-version=$HYTALE_VERSION
+      - name: Upload ${{ matrix.profile }} artifact
         uses: actions/upload-artifact@v6
         with:
-          name: HytaleMoonbaseTTS-fatjar
-          path: ./target/fatjar/HytaleMoonbaseTTS-*.jar
+          name: HytaleMoonbaseTTS-${{ matrix.profile }} for ${{ matrix.hytale-tag }}
+          path: ./target/${{ matrix.profile }}/HytaleMoonbaseTTS-*.jar
           if-no-files-found: error
-      - name: Upload libby artifact
-        uses: actions/upload-artifact@v6
-        with:
-          name: HytaleMoonbaseTTS-libby
-          path: ./target/with-libby/HytaleMoonbaseTTS-*.jar
-          if-no-files-found: error
-      - name: Upload libby to modtale
+      - name: Upload to modtale
+        env:
+          UPLOAD_VERSION: ${{ case(
+            matrix.profile == 'with-libby',
+            format('{0}-{1}', env.VERSION, env.LATEST_COMMIT_HASH),
+            format('{0}-{1}+fatjar', env.VERSION, env.LATEST_COMMIT_HASH)
+          ) }}
         run: |
-          JAR_PATH=$(find target/with-libby -type f -name 'HytaleMoonbaseTTS-*.jar' | head -n 1)
+          JAR_PATH=$(find target/${{ matrix.profile }} -type f -name 'HytaleMoonbaseTTS-*.jar' | head -n 1)
           
           echo "Found Jar: $JAR_PATH"
-          echo "Publishing Version: $VERSION-$LATEST_COMMIT_HASH"
+          echo "Publishing Version: $UPLOAD_VERSION"
 
-          curl -X POST "https://api.modtale.net/api/v1/projects/${{ vars.PROJECT_ID }}/versions" \
+          curl --fail-with-body -X POST "https://api.modtale.net/api/v1/projects/${{ vars.PROJECT_ID }}/versions" \
             -H "X-MODTALE-KEY: ${{ secrets.MODTALE_TOKEN }}" \
             -F "file=@$JAR_PATH" \
-            -F "versionNumber=$VERSION-$LATEST_COMMIT_HASH" \
+            -F "versionNumber=$UPLOAD_VERSION" \
             -F "gameVersions=$HYTALE_VERSION" \
             -F "channel=BETA" \
             -F "changelog=Automated Build & Release from GitHub"
