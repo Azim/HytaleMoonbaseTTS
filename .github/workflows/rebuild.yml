@@ -39,7 +39,7 @@ jobs:
           if-no-files-found: error
       - name: Upload libby to modtale
         run: |
-          JAR_PATH=./target/with-libby/HytaleMoonbaseTTS-*.jar
+          JAR_PATH=$(find target/with-libby -type f -name 'HytaleMoonbaseTTS-*.jar' | head -n 1)
           
           echo "Found Jar: $JAR_PATH"
           echo "Publishing Version: $VERSION-$LATEST_COMMIT_HASH"
