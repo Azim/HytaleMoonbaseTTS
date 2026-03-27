@@ -43,7 +43,7 @@ jobs:
         if: ${{ matrix.hytale-tag == 'release' }}
         run: |
           if [ "${{ matrix.profile }}" = "with-libby" ]; then
-            UPLOAD_VERSION="${VERSION}-${LATEST_COMMIT_HASH}+"
+            UPLOAD_VERSION="${VERSION}-${LATEST_COMMIT_HASH}"
           else
             UPLOAD_VERSION="${VERSION}-${LATEST_COMMIT_HASH}+fatjar"
           fi
