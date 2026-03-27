@@ -40,12 +40,10 @@ jobs:
           path: ./target/${{ matrix.profile }}/HytaleMoonbaseTTS-*.jar
           if-no-files-found: error
       - name: Upload to modtale
+        if: ${{ matrix.profile == 'with-libby' }}
         run: |
-          if [ "${{ matrix.profile }}" = "with-libby" ]; then
-            UPLOAD_VERSION="${VERSION}-${LATEST_COMMIT_HASH}"
-          else
-            UPLOAD_VERSION="${VERSION}-${LATEST_COMMIT_HASH}+fatjar"
-          fi
+          HYTALE_HASH="${HYTALE_VERSION#*-}"
+          UPLOAD_VERSION="$VERSION-$LATEST_COMMIT_HASH+$HYTALE_HASH"
           JAR_PATH=$(find target/${{ matrix.profile }} -type f -name 'HytaleMoonbaseTTS-*.jar' | head -n 1)
           
           echo "Found Jar: $JAR_PATH"
@@ -58,4 +56,3 @@ jobs:
             -F "gameVersions=$HYTALE_VERSION" \
             -F "channel=BETA" \
             -F "changelog=Automated Build & Release from GitHub"
-            
