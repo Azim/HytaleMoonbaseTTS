@@ -41,9 +41,9 @@ jobs:
       - name: Upload to modtale
         if: ${{ matrix.hytale-tag == 'release' }}
         run: |
-            UPLOAD_VERSION="${VERSION}-${LATEST_COMMIT_HASH}"
+          UPLOAD_VERSION="${VERSION}-${LATEST_COMMIT_HASH}"
           JAR_PATH=$(find target -type f -name 'HytaleMoonbaseTTS-*.jar' | head -n 1)
-          
+
           echo "Found Jar: $JAR_PATH"
           echo "Publishing Version: $UPLOAD_VERSION"
 
