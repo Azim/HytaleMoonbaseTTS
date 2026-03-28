@@ -8,7 +8,6 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        profile: [fatjar, with-libby]
         hytale-tag: [release, pre-release]
     runs-on: ubuntu-latest
     steps:
@@ -31,23 +30,19 @@ jobs:
           distribution: 'temurin'
           java-version: '25'
           cache: maven
-      - name: Build ${{ matrix.profile }} for ${{ matrix.hytale-tag }}
-        run: mvn clean package -P ${{ matrix.profile }} -Drevision=$VERSION-$LATEST_COMMIT_HASH -Dhytale-version=$HYTALE_VERSION
-      - name: Upload ${{ matrix.profile }} artifact
+      - name: Build for ${{ matrix.hytale-tag }}
+        run: mvn clean package -Drevision=$VERSION-$LATEST_COMMIT_HASH -Dhytale-version=$HYTALE_VERSION
+      - name: Upload ${{ matrix.hytale-tag }} artifact
         uses: actions/upload-artifact@v6
         with:
-          name: HytaleMoonbaseTTS-${{ matrix.profile }} for ${{ matrix.hytale-tag }}
-          path: ./target/${{ matrix.profile }}/HytaleMoonbaseTTS-*.jar
+          name: HytaleMoonbaseTTS for ${{ matrix.hytale-tag }} server tag
+          path: ./target/HytaleMoonbaseTTS-*.jar
           if-no-files-found: error
       - name: Upload to modtale
         if: ${{ matrix.hytale-tag == 'release' }}
         run: |
-          if [ "${{ matrix.profile }}" = "with-libby" ]; then
             UPLOAD_VERSION="${VERSION}-${LATEST_COMMIT_HASH}"
-          else
-            UPLOAD_VERSION="${VERSION}-${LATEST_COMMIT_HASH}+fatjar"
-          fi
-          JAR_PATH=$(find target/${{ matrix.profile }} -type f -name 'HytaleMoonbaseTTS-*.jar' | head -n 1)
+          JAR_PATH=$(find target -type f -name 'HytaleMoonbaseTTS-*.jar' | head -n 1)
           
           echo "Found Jar: $JAR_PATH"
           echo "Publishing Version: $UPLOAD_VERSION"

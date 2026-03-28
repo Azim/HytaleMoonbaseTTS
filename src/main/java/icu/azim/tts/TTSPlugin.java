@@ -1,9 +1,9 @@
 package icu.azim.tts;
 
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
+import java.util.HashMap;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.component.Store;
@@ -14,70 +14,56 @@ import com.hypixel.hytale.server.core.plugin.JavaPluginInit;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import com.hypixel.hytale.server.core.util.Config;
 
-import icu.azim.tts.util.DependencyLoader;
+import icu.azim.hyyap.HyYapPlugin;
 
 public class TTSPlugin extends JavaPlugin {
-    public static final int BITRATE = 48000;
-    public static final int FRAME_SIZE = 960;
 
     private final Config<TTSConfig> config = this.withConfig("HytaleMoonbaseTTSConfig", TTSConfig.CODEC);
-    
-    private static final ScheduledExecutorService SENDER_SCHEDULER = Executors.newSingleThreadScheduledExecutor();
-    private static final ScheduledExecutorService TTS_SCHEDULER = Executors.newSingleThreadScheduledExecutor();
-    private ScheduledFuture<?> senderFuture = null; 
-    private ScheduledFuture<?> ttsFuture = null;
-    private TTSThread ttsThread;
-    private BroadcastThread senderThread;
-    
+    private HashMap<UUID, CompletableFuture<Void>> playersSpeech = new HashMap<>(); // store who is already speaking as to not overlap audio from the same speaker
+
     public TTSPlugin(JavaPluginInit init) {
         super(init);
-        config.save();
-        DependencyLoader.load(this);
+        config.load().thenRun(() -> config.save()); // im doing config wrong aint i
     }
-    
+
     @Override
     protected void setup() {
-        senderThread = new BroadcastThread(config.get().isPositionalAudioEnabled()); 
-        senderFuture = SENDER_SCHEDULER.scheduleAtFixedRate(senderThread, 0, 20, TimeUnit.MILLISECONDS); //every 20 ms
 
-        ttsThread = new TTSThread(config.get().getCommandPrefix(), config.get().getCommandSuffix());
-        ttsFuture = TTS_SCHEDULER.scheduleWithFixedDelay(ttsThread, 0, 200, TimeUnit.MILLISECONDS); //5 times per second
-        
-        //FIXME need ttsThread reference in the message handler but i dont want to make it static so i will do that instead for now 
-        this.getEventRegistry().registerGlobal(PlayerChatEvent.class, event -> { 
+        this.getEventRegistry().registerGlobal(PlayerChatEvent.class, event -> {
             Ref<EntityStore> ref = event.getSender().getReference();
+            UUID sender = event.getSender().getUuid();
             Store<EntityStore> store = ref.getStore();
-            store.getExternalData().getWorld().execute(()->{
+            String message = config.get().getCommandPrefix() + event.getContent() + config.get().getCommandSuffix();
+            store.getExternalData().getWorld().execute(() -> {
                 NetworkId networkIdComponent = store.getComponent(ref, NetworkId.getComponentType());
-                ttsThread.speakAndEncode(event.getContent()).thenAccept(frames->{
-                    senderThread.broadcastSpeech(event.getSender().getUuid(), networkIdComponent.getId(), frames, event.getTargets());
-                }).exceptionally((ex)->{
-                    ex.printStackTrace();
-                    return null;
-                });
+
+                CompletableFuture<Void> playerFuture = playersSpeech.getOrDefault(sender,CompletableFuture.completedFuture(null));
+
+                CompletableFuture<List<byte[]>> spokenFuture = HyYapPlugin.getInstance().getDectalk().speakAndEncode(message);
+
+                CompletableFuture<Void> combined = playerFuture.handle((v, ex) -> null)// is over one way or another
+                        .thenCombine(spokenFuture, (ignored, frames) -> frames) // wait for tts to generate
+                        .thenCompose(frames -> { // broadcast
+                            if (config.get().isPositionalAudioEnabled()) {
+                                return HyYapPlugin.getInstance().getBroadcastThread().broadcastAtSpeaker(sender, networkIdComponent.getId(), frames, event.getTargets());
+                            } else {
+                                return HyYapPlugin.getInstance().getBroadcastThread().broadcastPositionless(sender, networkIdComponent.getId(), frames, event.getTargets());
+                            }
+                        }).exceptionally((ex) -> { // completable futures swallow exceptions, handle them
+                            ex.printStackTrace();
+                            return null;
+                        });
+                
+                playersSpeech.put(sender, combined);
             });
-            
+
         });
-        
+
     }
-    
+
     @Override
     protected void shutdown() {
         super.shutdown();
-        if(ttsFuture != null) ttsFuture.cancel(false); 
-        if(senderFuture != null) senderFuture.cancel(true);
-    }
-    
-    public static short[] generateBeepFrame(double freqHz, double amplitude) { //i will keep it around for now, maybe will reuse for something later
-        int frameSize = 960; // 20 ms @ 48 kHz
-        short[] samples = new short[frameSize];
-        double twoPiF = 2.0 * Math.PI * freqHz;
-        for (int i = 0; i < frameSize; i++) {
-            double t = i / (double) 48000;
-            double s = Math.sin(twoPiF * t);
-            samples[i] = (short) Math.round(s * amplitude * Short.MAX_VALUE);
-        }
-        return samples;
     }
 
 }

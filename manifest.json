@@ -11,7 +11,9 @@
   ],
   "Website": "https://github.com/Azim/HytaleMoonbaseTTS/",
   "ServerVersion": "${hytale-version}",
-  "Dependencies": {},
+  "Dependencies": {
+    "icu.azim:HyYap": "*"
+  },
   "OptionalDependencies": {},
   "DisabledByDefault": false,
   "IncludesAssetPack": false,
