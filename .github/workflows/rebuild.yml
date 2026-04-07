@@ -16,7 +16,7 @@ jobs:
       - name: Get latest commit hash
         run: echo "LATEST_COMMIT_HASH=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
       - name: Get latest version
-        run: echo "VERSION=0.1.1" >> $GITHUB_ENV
+        run: echo "VERSION=0.1.2" >> $GITHUB_ENV
       - name: Install xmllint
         run: sudo apt-get update && sudo apt-get install -y libxml2-utils
       - name: Get latest hytale version for ${{ matrix.hytale-tag }}
@@ -24,6 +24,16 @@ jobs:
           HYTALE_VERSION=$(curl -fsSL https://maven.hytale.com/${{ matrix.hytale-tag }}/com/hypixel/hytale/Server/maven-metadata.xml | xmllint --xpath "string(//metadata/versioning/latest)" -)
           echo "Latest version: $HYTALE_VERSION"
           echo "HYTALE_VERSION=$HYTALE_VERSION" >> $GITHUB_ENV
+      - name: Get latest hyyap version for ${{ matrix.hytale-tag }}
+        run: |
+          HYYAP_VERSION=$(curl -fsSL https://maven.hytalemodding.dev/snapshots/icu/azim/hyyap/HyYap/maven-metadata.xml | xmllint --xpath "string(//metadata/versioning/release)" -)
+          if [ "${{ matrix.hytale-tag }}" = "release" ]; then
+            HYYAP_VERSION="${HYYAP_VERSION%+release}+release"
+          else
+            HYYAP_VERSION="${HYYAP_VERSION%+release}"
+          fi
+          echo "Latest version: $HYYAP_VERSION"
+          echo "HYYAP_VERSION=$HYYAP_VERSION" >> "$GITHUB_ENV"
       - name: Set up Java 25
         uses: actions/setup-java@v5
         with:
@@ -31,7 +41,7 @@ jobs:
           java-version: '25'
           cache: maven
       - name: Build for ${{ matrix.hytale-tag }}
-        run: mvn clean package -Drevision=$VERSION-$LATEST_COMMIT_HASH -Dhytale-version=$HYTALE_VERSION
+        run: mvn clean package -Drevision=$VERSION-$LATEST_COMMIT_HASH -Dhytale-version=$HYTALE_VERSION -Dhyyap-version=$HYYAP_VERSION
       - name: Upload ${{ matrix.hytale-tag }} artifact
         uses: actions/upload-artifact@v6
         with:
@@ -53,4 +63,5 @@ jobs:
             -F "versionNumber=$UPLOAD_VERSION" \
             -F "gameVersions=$HYTALE_VERSION" \
             -F "channel=BETA" \
+            -F "modIds=${HYYAP_VERSION%+release}" \
             -F "changelog=Automated Build & Release from GitHub"
