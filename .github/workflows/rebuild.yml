@@ -63,5 +63,5 @@ jobs:
             -F "versionNumber=$UPLOAD_VERSION" \
             -F "gameVersions=$HYTALE_VERSION" \
             -F "channel=BETA" \
-            -F "modIds=${HYYAP_VERSION%+release}" \
+            -F "modIds=e60f5046-aed2-45a3-9edf-b6071766e1d9:${HYYAP_VERSION%+release}" \
             -F "changelog=Automated Build & Release from GitHub"
