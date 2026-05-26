@@ -8,8 +8,8 @@
 		<maven.compiler.source>25</maven.compiler.source>
 		<maven.compiler.target>25</maven.compiler.target>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<hytale-version>2026.03.26-89796e57b</hytale-version>
-		<hyyap-version>0.0.2-133837a</hyyap-version>
+		<hytale-version>0.5.0-pre.9.1</hytale-version>
+		<hyyap-version>0.0.3-e4e06a0</hyyap-version>
 	</properties>
 
 	<groupId>icu.azim</groupId>
@@ -72,7 +72,7 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.13.0</version>
 				<configuration>
-					<release>21</release>
+					<release>25</release>
 				</configuration>
 			</plugin>
 		</plugins>

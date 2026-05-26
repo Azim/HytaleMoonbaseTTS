@@ -13,7 +13,6 @@ import com.hypixel.hytale.server.core.plugin.JavaPlugin;
 import com.hypixel.hytale.server.core.plugin.JavaPluginInit;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import com.hypixel.hytale.server.core.util.Config;
-
 import icu.azim.hyyap.HyYapPlugin;
 
 public class TTSPlugin extends JavaPlugin {
@@ -30,24 +29,29 @@ public class TTSPlugin extends JavaPlugin {
     protected void setup() {
 
         this.getEventRegistry().registerGlobal(PlayerChatEvent.class, event -> {
-            Ref<EntityStore> ref = event.getSender().getReference();
+            Ref<EntityStore> ref = event.getSender().getReference(); 
             UUID sender = event.getSender().getUuid();
             Store<EntityStore> store = ref.getStore();
             String message = config.get().getCommandPrefix() + event.getContent() + config.get().getCommandSuffix();
             store.getExternalData().getWorld().execute(() -> {
                 NetworkId networkIdComponent = store.getComponent(ref, NetworkId.getComponentType());
 
-                CompletableFuture<Void> playerFuture = playersSpeech.getOrDefault(sender,CompletableFuture.completedFuture(null));
+                CompletableFuture<Void> playerFuture = playersSpeech.getOrDefault(sender, CompletableFuture.completedFuture(null));
 
                 CompletableFuture<List<byte[]>> spokenFuture = HyYapPlugin.getInstance().getDectalk().speakAndEncode(message);
 
-                CompletableFuture<Void> combined = playerFuture.handle((v, ex) -> null)// is over one way or another
-                        .thenCombine(spokenFuture, (ignored, frames) -> frames) // wait for tts to generate
+                CompletableFuture<Void> combined = playerFuture.handle((_, _) -> null)// is over one way or another
+                        .thenCombine(spokenFuture, (_, frames) -> frames) // wait for tts to generate
                         .thenCompose(frames -> { // broadcast
+                            var targets = event.getTargets();
+                            if(!config.get().canHearYourself()) {
+                                targets.removeIf(t -> t.getUuid().equals(sender));
+                            }
+                            
                             if (config.get().isPositionalAudioEnabled()) {
-                                return HyYapPlugin.getInstance().getBroadcastThread().broadcastAtSpeaker(sender, networkIdComponent.getId(), frames, event.getTargets());
+                                return HyYapPlugin.getInstance().getBroadcastThread().broadcastAtSpeaker(sender, networkIdComponent.getId(), frames, targets);
                             } else {
-                                return HyYapPlugin.getInstance().getBroadcastThread().broadcastPositionless(sender, networkIdComponent.getId(), frames, event.getTargets());
+                                return HyYapPlugin.getInstance().getBroadcastThread().broadcastPositionless(sender, networkIdComponent.getId(), frames, targets);
                             }
                         }).exceptionally((ex) -> { // completable futures swallow exceptions, handle them
                             ex.printStackTrace();
@@ -58,6 +62,8 @@ public class TTSPlugin extends JavaPlugin {
             });
 
         });
+
+         
 
     }
 

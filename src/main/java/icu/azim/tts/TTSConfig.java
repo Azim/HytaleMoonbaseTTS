@@ -17,12 +17,16 @@ public class TTSConfig {
             .append(new KeyedCodec<Boolean>("PositionalAudioEnabled", Codec.BOOLEAN),
                     (config, value) -> config.positionalAudioEnabled = value,
                     (config) -> config.positionalAudioEnabled).add()
+            .append(new KeyedCodec<Boolean>("HearYourself", Codec.BOOLEAN),
+                    (config, value) -> config.hearYourself = value,
+                    (config) -> config.hearYourself).add()
             .build();
 
 
     private String commandPrefix = "[:rate 180][:np]";
     private String commandSuffix = "[:phoneme off][:error speak][:mode spell set][:mode spell off][:punct some]";
     private boolean positionalAudioEnabled = false;
+    private boolean hearYourself = true;
     public String getCommandPrefix() {
         return commandPrefix;
     }
@@ -45,6 +49,14 @@ public class TTSConfig {
 
     public void setPositionalAudioEnabled(boolean positionalAudioEnabled) {
         this.positionalAudioEnabled = positionalAudioEnabled;
+    }
+
+    public boolean canHearYourself() {
+        return hearYourself;
+    }
+
+    public void setHearYourself(boolean hearYourself) {
+        this.hearYourself = hearYourself;
     }
 
 }
