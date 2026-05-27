@@ -7,6 +7,7 @@ import java.util.concurrent.CompletableFuture;
 
 import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.component.Store;
+import com.hypixel.hytale.logger.HytaleLogger;
 import com.hypixel.hytale.server.core.event.events.player.PlayerChatEvent;
 import com.hypixel.hytale.server.core.modules.entity.tracker.NetworkId;
 import com.hypixel.hytale.server.core.plugin.JavaPlugin;
@@ -18,7 +19,7 @@ import icu.azim.hyyap.HyYapPlugin;
 public class TTSPlugin extends JavaPlugin {
 
     private final Config<TTSConfig> config = this.withConfig("HytaleMoonbaseTTSConfig", TTSConfig.CODEC);
-    private HashMap<UUID, CompletableFuture<Void>> playersSpeech = new HashMap<>(); // store who is already speaking as to not overlap audio from the same speaker
+    private HashMap<Ref<EntityStore>, CompletableFuture<Void>> playersSpeech = new HashMap<>(); // store who is already speaking as to not overlap audio from the same speaker
 
     public TTSPlugin(JavaPluginInit init) {
         super(init);
@@ -29,36 +30,39 @@ public class TTSPlugin extends JavaPlugin {
     protected void setup() {
 
         this.getEventRegistry().registerGlobal(PlayerChatEvent.class, event -> {
-            Ref<EntityStore> ref = event.getSender().getReference(); 
-            UUID sender = event.getSender().getUuid();
-            Store<EntityStore> store = ref.getStore();
-            String message = config.get().getCommandPrefix() + event.getContent() + config.get().getCommandSuffix();
-            store.getExternalData().getWorld().execute(() -> {
-                NetworkId networkIdComponent = store.getComponent(ref, NetworkId.getComponentType());
 
-                CompletableFuture<Void> playerFuture = playersSpeech.getOrDefault(sender, CompletableFuture.completedFuture(null));
+            HytaleLogger.get("moonbase chat").atInfo().log("got player chat");
+
+            Ref<EntityStore> ref = event.getSender().getReference();
+            String message = config.get().getCommandPrefix() + event.getContent() + config.get().getCommandSuffix();
+            ref.getStore().getExternalData().getWorld().execute(() -> {
+                HytaleLogger.get("moonbase chat").atInfo().log("execute on world");
+                CompletableFuture<Void> playerFuture = playersSpeech.getOrDefault(ref, CompletableFuture.completedFuture(null));
 
                 CompletableFuture<List<byte[]>> spokenFuture = HyYapPlugin.getInstance().getDectalk().speakAndEncode(message);
 
                 CompletableFuture<Void> combined = playerFuture.handle((_, _) -> null)// is over one way or another
                         .thenCombine(spokenFuture, (_, frames) -> frames) // wait for tts to generate
                         .thenCompose(frames -> { // broadcast
+                            HytaleLogger.get("moonbase chat").atInfo().log("then compose");
                             var targets = event.getTargets();
                             if(!config.get().canHearYourself()) {
-                                targets.removeIf(t -> t.getUuid().equals(sender));
+                                targets.removeIf(t -> t.getReference().equals(ref));
                             }
                             
                             if (config.get().isPositionalAudioEnabled()) {
-                                return HyYapPlugin.getInstance().getBroadcastThread().broadcastAtSpeaker(sender, networkIdComponent.getId(), frames, targets);
+                                HytaleLogger.get("moonbase chat").atInfo().log("broadcast at speaker");
+                                return HyYapPlugin.getInstance().getBroadcastThread().broadcastAtSpeaker(ref, frames, targets);
                             } else {
-                                return HyYapPlugin.getInstance().getBroadcastThread().broadcastPositionless(sender, networkIdComponent.getId(), frames, targets);
+                                HytaleLogger.get("moonbase chat").atInfo().log("broadcast positionless");
+                                return HyYapPlugin.getInstance().getBroadcastThread().broadcastPositionless(ref, frames, targets);
                             }
                         }).exceptionally((ex) -> { // completable futures swallow exceptions, handle them
                             ex.printStackTrace();
                             return null;
                         });
                 
-                playersSpeech.put(sender, combined);
+                playersSpeech.put(ref, combined);
             });
 
         });
